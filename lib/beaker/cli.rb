@@ -13,7 +13,7 @@ module Beaker
       @timestamp = Time.now
       @options_parser = Beaker::Options::Parser.new
       @options = @options_parser.parse_args
-      @logger = Beaker::Logger.new(@options)
+      @logger = Beaker::ThreadLogger.new(@options)
       @options[:logger] = @logger
       @options[:timestamp] = @timestamp
       @options[:beaker_version] = Beaker::Version::STRING
@@ -92,23 +92,23 @@ module Beaker
         errored = false
 
         #pre acceptance  phase
-        run_suite(:pre_suite, :fast)
+        run_suite(:pre_suite, :fast, true)
 
         #testing phase
         begin
-          run_suite(:tests, @options[:fail_mode])
+          run_suite(:tests, @options[:fail_mode], false)
         #post acceptance phase
         rescue => e
           #post acceptance on failure
           #run post-suite if we are in fail-slow mode
           if @options[:fail_mode].to_s =~ /slow/
-            run_suite(:post_suite)
+            run_suite(:post_suite, nil, true)
             @perf.print_perf_info if defined? @perf
           end
           raise e
         else
           #post acceptance on success
-          run_suite(:post_suite)
+          run_suite(:post_suite, nil, true)
           @perf.print_perf_info if defined? @perf
         end
       #cleanup phase
@@ -146,16 +146,17 @@ module Beaker
     end
 
     #Run the provided test suite
-    #@param [Symbol] suite_name The test suite to execute
-    #@param [String] failure_strategy How to proceed after a test failure, 'fast' = stop running tests immediately, 'slow' =
+    #@param [Symbol]  suite_name The test suite to execute
+    #@param [String]  failure_strategy How to proceed after a test failure, 'fast' = stop running tests immediately, 'slow' =
     #                                 continue to execute tests.
-    def run_suite(suite_name, failure_strategy = nil)
+    #@param [Boolean] ignore_groups (false) true to ignore host groups, false to use host groups to run tests in parallel
+    def run_suite(suite_name, failure_strategy = nil, ignore_groups = false)
       if (@options[suite_name].empty?)
         @logger.notify("No tests to run for suite '#{suite_name.to_s}'")
         return
       end
       Beaker::TestSuite.new(
-        suite_name, @hosts, @options, @timestamp, failure_strategy
+        suite_name, @hosts, @options, @timestamp, failure_strategy, ignore_groups
       ).run_and_raise_on_failure
     end
 

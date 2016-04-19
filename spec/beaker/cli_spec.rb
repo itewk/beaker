@@ -6,7 +6,7 @@ module Beaker
 
     context 'execute!' do
       before :each do
-       stub_const("Beaker::Logger", double().as_null_object )
+       stub_const("Beaker::ThreadLogger", double().as_null_object )
         File.open("sample.cfg", "w+") do |file|
           file.write("HOSTS:\n")
           file.write("  myhost:\n")
@@ -25,9 +25,9 @@ module Beaker
           options = cli.instance_variable_get(:@options)
           options[:fail_mode] = 'slow'
           cli.instance_variable_set(:@options, options)
-          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast).and_return(true)
-          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode]).and_throw("bad test")
-          allow( cli ).to receive(:run_suite).with(:post_suite).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast, true).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode], false).and_throw("bad test")
+          allow( cli ).to receive(:run_suite).with(:post_suite, nil, true).and_return(true)
 
           expect( cli ).to receive(:run_suite).exactly( 3 ).times
           expect{ cli.execute! }.to raise_error
@@ -38,9 +38,9 @@ module Beaker
           options = cli.instance_variable_get(:@options)
           options[:fail_mode] = 'fast'
           cli.instance_variable_set(:@options, options)
-          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast).and_return(true)
-          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode]).and_throw("bad test")
-          allow( cli ).to receive(:run_suite).with(:post_suite).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast, true).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode], false).and_throw("bad test")
+          allow( cli ).to receive(:run_suite).with(:post_suite, nil, true).and_return(true)
 
           expect( cli ).to receive(:run_suite).exactly( 2 ).times
           expect{ cli.execute! }.to raise_error
@@ -54,9 +54,9 @@ module Beaker
           options[:fail_mode] = 'fast'
           options[:preserve_hosts] = 'never'
           cli.instance_variable_set(:@options, options)
-          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast).and_return(true)
-          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode]).and_throw("bad test")
-          allow( cli ).to receive(:run_suite).with(:post_suite).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast, true).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode], false).and_throw("bad test")
+          allow( cli ).to receive(:run_suite).with(:post_suite, nil, true).and_return(true)
 
           netmanager = double(:netmanager)
           cli.instance_variable_set(:@network_manager, netmanager)
@@ -71,9 +71,9 @@ module Beaker
           options[:fail_mode] = 'fast'
           options[:preserve_hosts] = 'never'
           cli.instance_variable_set(:@options, options)
-          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast).and_return(true)
-          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode]).and_return(true)
-          allow( cli ).to receive(:run_suite).with(:post_suite).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast, true).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode], false).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:post_suite, nil, true).and_return(true)
 
           netmanager = double(:netmanager)
           cli.instance_variable_set(:@network_manager, netmanager)
@@ -91,9 +91,9 @@ module Beaker
           options[:log_dated_dir] = '.'
           options[:hosts_file] = 'sample.cfg'
           cli.instance_variable_set(:@options, options)
-          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast).and_return(true)
-          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode]).and_return(true)
-          allow( cli ).to receive(:run_suite).with(:post_suite).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast, true).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode], false).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:post_suite, nil, true).and_return(true)
           cli.instance_variable_set(:@hosts, {})
 
           netmanager = double(:netmanager)
@@ -109,9 +109,9 @@ module Beaker
           options[:fail_mode] = 'fast'
           options[:preserve_hosts] = 'always'
           cli.instance_variable_set(:@options, options)
-          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast).and_return(true)
-          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode]).and_throw("bad test")
-          allow( cli ).to receive(:run_suite).with(:post_suite).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast, true).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode], false).and_throw("bad test")
+          allow( cli ).to receive(:run_suite).with(:post_suite, nil, true).and_return(true)
 
           netmanager = double(:netmanager)
           cli.instance_variable_set(:@network_manager, netmanager)
@@ -125,9 +125,9 @@ module Beaker
           options[:fail_mode] = 'fast'
           options[:preserve_hosts] = 'onfail'
           cli.instance_variable_set(:@options, options)
-          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast).and_return(true)
-          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode]).and_return(true)
-          allow( cli ).to receive(:run_suite).with(:post_suite).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast, true).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode], false).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:post_suite, nil, true).and_return(true)
 
           netmanager = double(:netmanager)
           cli.instance_variable_set(:@network_manager, netmanager)
@@ -142,9 +142,9 @@ module Beaker
           options[:fail_mode] = 'fast'
           options[:preserve_hosts] = 'onfail'
           cli.instance_variable_set(:@options, options)
-          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast).and_return(true)
-          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode]).and_throw("bad test")
-          allow( cli ).to receive(:run_suite).with(:post_suite).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast, true).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode], false).and_throw("bad test")
+          allow( cli ).to receive(:run_suite).with(:post_suite, nil, true).and_return(true)
 
           netmanager = double(:netmanager)
           cli.instance_variable_set(:@network_manager, netmanager)
@@ -159,9 +159,9 @@ module Beaker
           options[:fail_mode] = 'fast'
           options[:preserve_hosts] = 'onpass'
           cli.instance_variable_set(:@options, options)
-          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast).and_return(true)
-          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode]).and_throw("bad test")
-          allow( cli ).to receive(:run_suite).with(:post_suite).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast, true).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode], false).and_throw("bad test")
+          allow( cli ).to receive(:run_suite).with(:post_suite, nil, true).and_return(true)
 
           netmanager = double(:netmanager)
           cli.instance_variable_set(:@network_manager, netmanager)
@@ -179,9 +179,9 @@ module Beaker
           options[:hosts_file] = 'sample.cfg'
           cli.instance_variable_set(:@hosts, {})
           cli.instance_variable_set(:@options, options)
-          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast).and_return(true)
-          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode]).and_return(true)
-          allow( cli ).to receive(:run_suite).with(:post_suite).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast, true).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode], false).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:post_suite, nil, true).and_return(true)
 
           netmanager = double(:netmanager)
           cli.instance_variable_set(:@network_manager, netmanager)
@@ -232,9 +232,9 @@ module Beaker
           options[:preserve_hosts] = 'onpass'
           options[:hosts_file] = 'sample.cfg'
           cli.instance_variable_set(:@options, options)
-          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast).and_return(true)
-          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode]).and_return(true)
-          allow( cli ).to receive(:run_suite).with(:post_suite).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:pre_suite, :fast, true).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:tests, options[:fail_mode], false).and_return(true)
+          allow( cli ).to receive(:run_suite).with(:post_suite, nil, true).and_return(true)
 
           hosts = [
             make_host('petey', { :hypervisor => 'peterPan' }),

@@ -224,7 +224,7 @@ module Beaker
         has_ending_newline = line.end_with?("\n")
         actual_lines = line.split("\n")
         actual_lines.map! do |actual_line|
-          @line_prefix + actual_line
+          self.line_prefix + actual_line
         end
         new_line = actual_lines.join("\n")
         new_line << "\n" if has_ending_newline

@@ -266,19 +266,21 @@ module Beaker
     #@option options [String] :xml_file The name of the JUnit XML file to be written to
     #@option options [String] :project_root The full path to the Beaker lib directory
     #@option options [String] :xml_stylesheet The path to a stylesheet to be applied to the generated XML output
-    #@param [Symbol] fail_mode One of :slow, :fast
     #@param [Time] timestamp Beaker execution start time
-    def initialize(name, hosts, options, timestamp, fail_mode=nil)
-      @logger     = options[:logger]
-      @test_cases = []
-      @test_files = options[name]
-      @name       = name.to_s.gsub(/\s+/, '-')
-      @hosts      = hosts
-      @run        = false
-      @options    = options
-      @fail_mode  = fail_mode || @options[:fail_mode] || :slow
+    #@param [Symbol] fail_mode One of :slow, :fast
+    #@param [Boolean] ignore_groups (false) true to ignore host groups, false to use host groups to run tests in parallel
+    def initialize(name, hosts, options, timestamp, fail_mode=nil, ignore_groups = false)
+      @logger        = options[:logger]
+      @test_cases    = []
+      @test_files    = options[name]
+      @name          = name.to_s.gsub(/\s+/, '-')
+      @hosts         = hosts
+      @run           = false
+      @options       = options
+      @fail_mode     = fail_mode || @options[:fail_mode] || :slow
+      @timestamp     = timestamp
+      @ignore_groups = ignore_groups
       @test_suite_results = TestSuiteResult.new(@options, name)
-      @timestamp = timestamp
 
       report_and_raise(@logger, RuntimeError.new("#{@name}: no test files found..."), "TestSuite: initialize") if @test_files.empty?
 
@@ -305,29 +307,80 @@ module Beaker
       @test_suite_results.start_time = start_time
       @test_suite_results.total_tests = @test_files.length
 
-      @test_files.each do |test_file|
-        @logger.info "Begin #{test_file}"
-        start = Time.now
-        test_case = TestCase.new(@hosts, @logger, options, test_file).run_test
-        duration = Time.now - start
-        @test_suite_results.add_test_case(test_case)
-        @test_cases << test_case
+      test_file_queue = @test_files.dup
+      group_threads = []
 
-        state = test_case.test_status == :skip ? 'skipp' : test_case.test_status
-        msg = "#{test_file} #{state}ed in %.2f seconds" % duration.to_f
-        case test_case.test_status
-        when :pass
-          @logger.success msg
-        when :skip
-          @logger.warn msg
-        when :fail
-          @logger.error msg
-          break if @fail_mode.to_s !~ /slow/ #all failure modes except slow cause us to kick out early on failure
-        when :error
-          @logger.warn msg
-          break if @fail_mode.to_s !~ /slow/ #all failure modes except slow cause us to kick out early on failure
+      # if not ignoring groups and breaking the tests up into groups and running in parallel
+      # else run all tests in serial
+      if !@ignore_groups && @options['GROUPS'] && !@options['GROUPS'].empty?
+        # create a thread for each group of VMs to pull tests off the queue of tests to run
+        @options['GROUPS'].each do |group, group_options|
+          group_threads << Thread.new(group, group_options) do |group, group_options|
+            # select the hosts that are part of this group
+            group_hosts = @hosts.select { |host| group_options[:hosts].include?(host.name) }
+
+            # while there are still tests on the queue pop one off to execute it
+            while test_file = test_file_queue.pop
+              @logger.info "Group #{group}: Begin #{test_file}"
+              @logger.flush_thread_buffer
+              start = Time.now
+              test_case = TestCase.new(group_hosts, @logger, @options, test_file).run_test
+              duration = Time.now - start
+              @test_suite_results.add_test_case(test_case)
+              @test_cases << test_case
+
+              state = test_case.test_status == :skip ? 'skipp' : test_case.test_status
+              msg = "#{test_file} #{state}ed in %.2f seconds" % duration.to_f
+              case test_case.test_status
+              when :pass
+                @logger.success "Group #{group}: #{msg}"
+                @logger.flush_thread_buffer
+              when :skip
+                @logger.warn "Group #{group}: #{msg}"
+                @logger.flush_thread_buffer
+              when :fail
+                @logger.error "Group #{group}: #{msg}"
+                @logger.flush_thread_buffer
+                break if @fail_mode.to_s !~ /slow/ #all failure modes except slow cause us to kick out early on failure
+              when :error
+                @logger.warn "Group #{group}: #{msg}"
+                @logger.flush_thread_buffer
+                break if @fail_mode.to_s !~ /slow/ #all failure modes except slow cause us to kick out early on failure
+              end
+            end
+          end
+        end
+
+        # wait for all the group threads to finish
+        while !group_threads.empty?
+          group_threads.pop.join
+        end
+      else
+        @test_files.each do |test_file|
+          @logger.info "Begin #{test_file}"
+          start = Time.now
+          test_case = TestCase.new(@hosts, @logger, options, test_file).run_test
+          duration = Time.now - start
+          @test_suite_results.add_test_case(test_case)
+          @test_cases << test_case
+
+          state = test_case.test_status == :skip ? 'skipp' : test_case.test_status
+          msg = "#{test_file} #{state}ed in %.2f seconds" % duration.to_f
+          case test_case.test_status
+          when :pass
+            @logger.success msg
+          when :skip
+            @logger.warn msg
+          when :fail
+            @logger.error msg
+            break if @fail_mode.to_s !~ /slow/ #all failure modes except slow cause us to kick out early on failure
+          when :error
+            @logger.warn msg
+            break if @fail_mode.to_s !~ /slow/ #all failure modes except slow cause us to kick out early on failure
+          end
         end
       end
+
       @test_suite_results.stop_time = Time.now
 
       # REVISIT: This changes global state, breaking logging in any future runs

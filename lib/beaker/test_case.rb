@@ -108,68 +108,47 @@ module Beaker
       #
       # We put this on each wrapper (rather than the class) so that methods
       # defined in the tests don't leak out to other tests.
-      class << self
-        def run_test
-          @logger.start_sublog
-          @logger.last_result = nil
+      self.define_singleton_method(:run_test) do
+        @logger.start_sublog
+        @logger.last_result = nil
 
-          set_current_step_name(nil)
+        set_current_step_name(nil)
 
-          #add arbitrary role methods
-          roles = []
-          @hosts.each do |host|
-            roles << host[:roles]
-          end
-          add_role_def( roles.flatten.uniq )
+        #add arbitrary role methods
+        roles = []
+        @hosts.each do |host|
+          roles << host[:roles]
+        end
+        add_role_def( roles.flatten.uniq )
 
-          @runtime = Benchmark.realtime do
-            begin
-              test = File.read(path)
-              eval test,nil,path,1
-            rescue FailTest, TEST_EXCEPTION_CLASS => e
-              @test_status = :fail
-              @exception   = e
-            rescue PendingTest
-              @test_status = :pending
-            rescue SkipTest
-              @test_status = :skip
-            rescue StandardError, ScriptError, SignalException => e
-              log_and_fail_test(e)
-            ensure
-              @logger.info('Begin teardown')
-              @teardown_procs.each do |teardown|
-                begin
-                  teardown.call
-                rescue StandardError, SignalException, TEST_EXCEPTION_CLASS => e
-                  log_and_fail_test(e)
-                end
+        @runtime = Benchmark.realtime do
+          begin
+            test = File.read(path)
+            eval test,nil,path,1
+          rescue FailTest, TEST_EXCEPTION_CLASS => e
+            @test_status = :fail
+            @exception   = e
+          rescue PendingTest
+            @test_status = :pending
+          rescue SkipTest
+            @test_status = :skip
+          rescue StandardError, ScriptError, SignalException => e
+            log_and_fail_test(e)
+          ensure
+            @logger.info('Begin teardown')
+            @teardown_procs.each do |teardown|
+              begin
+                teardown.call
+              rescue StandardError, SignalException, TEST_EXCEPTION_CLASS => e
+                log_and_fail_test(e)
               end
-              @logger.info('End teardown')
             end
+            @logger.info('End teardown')
           end
-          @sublog = @logger.get_sublog
-          @last_result = @logger.last_result
-          return self
         end
-
-        private
-
-        # Log an error and mark the test as failed, passing through an
-        # exception so it can be displayed at the end of the total run.
-        #
-        # We break out the complete exception backtrace and log each line
-        # individually as well.
-        #
-        # @param exception [Exception] exception to fail with
-        def log_and_fail_test(exception)
-          logger.error("#{exception.class}: #{exception.message}")
-          bt = exception.backtrace
-          logger.pretty_backtrace(bt).each_line do |line|
-            logger.error(line)
-          end
-          @test_status = :error
-          @exception   = exception
-        end
+        @sublog = @logger.get_sublog
+        @last_result = @logger.last_result
+        return self
       end
     end
 
@@ -188,5 +167,23 @@ module Beaker
       hash
     end
 
+    private
+
+    # Log an error and mark the test as failed, passing through an
+    # exception so it can be displayed at the end of the total run.
+    #
+    # We break out the complete exception backtrace and log each line
+    # individually as well.
+    #
+    # @param exception [Exception] exception to fail with
+    def log_and_fail_test(exception)
+      logger.error("#{exception.class}: #{exception.message}")
+      bt = exception.backtrace
+      logger.pretty_backtrace(bt).each_line do |line|
+        logger.error(line)
+      end
+      @test_status = :error
+      @exception   = exception
+    end
   end
 end
